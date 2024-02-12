@@ -11,6 +11,7 @@ class TextSwitcherGUI(wx.Frame):
         self.SetMinSize((400, 250))
 
         self.obs_text_switcher = obs_text.OBSTextSwitcher()
+        self.obs_text_switcher.load_settings()
 
         self.menu_bar = wx.MenuBar()
         self.file_menu = wx.Menu()
@@ -231,10 +232,10 @@ class ControlPanel(wx.Panel):
     Updates the items of a Choice and selects the matching item again if it still exists.
     Returns the selected item or None if the label is now selected.
     """
-    def update_selector_items(self, selector: wx.Choice, new_items, label_text, select_first_item=False):
+    def update_selector_items(self, selector: wx.Choice, new_items, label_text, default_item=None, select_first_item=False):
         old_items = selector.GetItems()
         old_index = selector.GetSelection()
-        old_item = None if old_index == -1 else old_items[old_index]
+        old_item = default_item if old_index == -1 else old_items[old_index]
         new_index = new_items.index(old_item) if old_item is not None and old_item in new_items else -1
         selector.SetItems([label_text, *new_items])
 
@@ -253,21 +254,24 @@ class ControlPanel(wx.Panel):
         try:
             scenes = self.obs_text_switcher.get_scene_names()
 
-            scene1 = self.update_selector_items(self.scene1_selector, scenes, "Scene 1")
-            scene2 = self.update_selector_items(self.scene2_selector, scenes, "Scene 2")
+            scene1 = self.update_selector_items(self.scene1_selector, scenes, "Scene 1", default_item=self.obs_text_switcher.scene1)
+            scene2 = self.update_selector_items(self.scene2_selector, scenes, "Scene 2", default_item=self.obs_text_switcher.scene2)
             
             scene1_sources = [] if scene1 is None else self.obs_text_switcher.get_text_sources(scene1)
             scene2_sources = [] if scene2 is None else self.obs_text_switcher.get_text_sources(scene2)
 
             source1 = self.update_selector_items(self.source1_selector, scene1_sources, "Source 1",
+                                                 default_item=self.obs_text_switcher.source1,
                                                  select_first_item=True)
             source2 = self.update_selector_items(self.source2_selector, scene2_sources, "Source 2",
+                                                 default_item=self.obs_text_switcher.source2,
                                                  select_first_item=True)
 
             self.obs_text_switcher.scene1 = scene1
             self.obs_text_switcher.scene2 = scene2
             self.obs_text_switcher.source1 = source1
             self.obs_text_switcher.source2 = source2
+            self.obs_text_switcher.save_settings()
 
             for choice in [scene1, scene2, source1, source2]:
                 if choice is None:

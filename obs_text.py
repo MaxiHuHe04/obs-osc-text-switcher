@@ -4,7 +4,6 @@ from obswebsocket import requests as obsrequests
 from obswebsocket import events as obsevents
 from config import OBS_WS_HOST, OBS_WS_PASSWORD, OBS_WS_PORT, OBS_TRANSITION_TIMEOUT
 
-
 class OBSTextSwitcher:
     def __init__(self):
         self.client = obswebsocket.obsws(OBS_WS_HOST, OBS_WS_PORT, OBS_WS_PASSWORD, authreconnect=3)
@@ -51,6 +50,24 @@ class OBSTextSwitcher:
             self.transition_start_time = None
             return False
         return True
+    
+    def save_settings(self):
+        settings = dict(scene1=self.scene1, scene2=self.scene2,
+                        source1=self.source1, source2=self.source2)
+        self.client.call(obsrequests.SetPersistentData(realm="OBS_WEBSOCKET_DATA_REALM_GLOBAL",
+                                                        slotName=f"osc_text_switcher_settings",
+                                                        slotValue=settings))
+
+    def load_settings(self):
+        request = obsrequests.GetPersistentData(realm="OBS_WEBSOCKET_DATA_REALM_GLOBAL",
+                                                slotName=f"osc_text_switcher_settings")
+        settings = self.client.call(request).getSlotValue()
+        if not isinstance(settings, dict):
+            return
+        self.scene1 = settings.get("scene1", None)
+        self.scene2 = settings.get("scene2", None)
+        self.source1 = settings.get("source1", None)
+        self.source2 = settings.get("source2", None)
 
     def is_studio_mode(self):
         return self.client.call(obsrequests.GetStudioModeEnabled()).getStudioModeEnabled()
