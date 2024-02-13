@@ -186,6 +186,7 @@ class TextSwitcherGUI(wx.Frame):
         if line_index < 0 or line_index >= len(self.text_lines):
             return
         new_line = self.text_lines[line_index]
+        self.scroll_to_line(new_line)
         try:
             if self.obs_text_switcher.switch_text(new_line.get_text()):
                 self.active_index = line_index
@@ -208,6 +209,14 @@ class TextSwitcherGUI(wx.Frame):
     
     def hide_text(self):
         self.obs_text_switcher.switch_text("")
+    
+    def scroll_to_line(self, text_line):
+        if text_line.Position.y < 10:
+            self.lines_panel.ScrollPages(-1)
+        elif text_line.Position.y > self.lines_panel.Size.Height - text_line.Size.Height - 20:
+            self.lines_panel.ScrollPages(1)
+    
+        self.lines_panel.ScrollChildIntoView(text_line)
 
 class TextLine(wx.Panel):
     def __init__(self, parent, gui: TextSwitcherGUI, text):
@@ -244,7 +253,8 @@ class TextLine(wx.Panel):
     
     def focus_line(self):
         self.entry.SetFocus()
-    
+        self.text_switcher_gui.scroll_to_line(self)
+
     def key_down_event(self, event: wx.KeyEvent):
         text_lines = self.text_switcher_gui.text_lines
         index = text_lines.index(self)
