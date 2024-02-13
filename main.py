@@ -1,5 +1,6 @@
 import wx
 import wx.lib.scrolledpanel
+import ctypes
 import obs_text
 import osc_server
 import config
@@ -10,6 +11,7 @@ class TextSwitcherGUI(wx.Frame):
     def __init__(self):
         super().__init__(None, title="OBS OSC Text Switcher", style=wx.DEFAULT_FRAME_STYLE | wx.FULL_REPAINT_ON_RESIZE)
         self.SetMinSize((400, 250))
+        self.SetIcon(wx.Icon("icon.ico"))
 
         self.obs_text_switcher = obs_text.OBSTextSwitcher()
         self.obs_text_switcher.load_settings()
@@ -377,6 +379,8 @@ class ControlPanel(wx.Panel):
             self.text_switcher_gui.show_exception(e)
 
 if __name__ == "__main__":
+    if hasattr(ctypes, "windll"):
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("obsosctextswitcher.1.0")
     app = wx.App()
     gui = TextSwitcherGUI()
     gui.Show()
