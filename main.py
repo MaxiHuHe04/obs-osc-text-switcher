@@ -2,6 +2,7 @@ import wx
 import wx.lib.scrolledpanel
 import obs_text
 import osc_server
+import config
 
 SQUARE_BUTTON_SIZE = wx.Size(24, 24)
 
@@ -76,10 +77,13 @@ class TextSwitcherGUI(wx.Frame):
         self.clear_lines()
         i = 0
         for line in self.current_file:
-            if i >= 200:
-                return
-            self.add_new_line(line.removesuffix("\n"))
+            if config.MAX_FILE_LINES > 0 and i >= config.MAX_FILE_LINES:
+               break
+            self.add_new_line(line.removesuffix("\n"), update_panel=False)
             i += 1
+        self.lines_panel.FitInside()
+        self.update_line_states()
+        self.file_dirty = False
     
     def save_current_file(self):
         if self.current_file is None:
@@ -117,7 +121,7 @@ class TextSwitcherGUI(wx.Frame):
                 if self.save_file() == wx.ID_CANCEL:
                     return wx.ID_CANCEL
 
-        file_dialog = wx.FileDialog(self, style=wx.FD_OPEN, wildcard="*.txt")
+        file_dialog = wx.FileDialog(self, style=wx.FD_OPEN, wildcard="Text files (*.txt)|*.txt|All files|*.*")
         if file_dialog.ShowModal() == wx.ID_CANCEL:
             return wx.ID_CANCEL
         
@@ -153,13 +157,14 @@ class TextSwitcherGUI(wx.Frame):
             else:
                 line_panel.set_state(None)
     
-    def add_new_line(self, text="", before_line=None):
+    def add_new_line(self, text="", before_line=None, update_panel=True):
         line_panel = TextLine(self.lines_panel, self, text)
         index = self.text_lines.index(before_line) if before_line else len(self.text_lines)
         self.text_lines.insert(index, line_panel)
         self.scroll_sizer.Insert(index, line_panel, 0, wx.EXPAND | wx.ALL, 4)
-        self.lines_panel.FitInside()
-        self.update_line_states()
+        if update_panel:
+            self.lines_panel.FitInside()
+            self.update_line_states()
         self.file_dirty = True
 
     def remove_line(self, line: "TextLine"):
