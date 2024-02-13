@@ -50,27 +50,97 @@ class TextSwitcherGUI(wx.Frame):
 
         self.text_lines = []
         self.active_index = -1
+        self.current_file = None
+        self.file_dirty = False
 
         self.osc_server = osc_server.OSCServer(self)
 
         self.Bind(wx.EVT_CLOSE, self.on_close_window)
+    
+    def ask_save_file(self):
+        dialog = wx.MessageDialog(self, "Do you want to save the current lines?", "Save text?", wx.YES | wx.NO | wx.CANCEL | wx.ICON_QUESTION)
+        return dialog.ShowModal()
 
     def on_close_window(self, event):
+        if self.text_lines and self.file_dirty:
+            choice = self.ask_save_file()
+            if choice == wx.ID_CANCEL:
+                return
+            if choice == wx.ID_YES:
+                self.save_file()
         self.osc_server.shutdown()
         event.Skip()
     
+    def load_file_from_path(self, path):
+        self.current_file = open(path, "r+", encoding="utf8")
+        self.clear_lines()
+        i = 0
+        for line in self.current_file:
+            if i >= 200:
+                return
+            self.add_new_line(line.removesuffix("\n"))
+            i += 1
+    
+    def save_current_file(self):
+        if self.current_file is None:
+            raise IOError("There is no file currently opened")
+        self.current_file.truncate(0)
+        if self.current_file.seekable():
+            self.current_file.seek(0)
+        for text_line in self.text_lines:
+            self.current_file.write(text_line.get_text())
+            self.current_file.write("\n")
+        self.current_file.flush()
+        self.file_dirty = False
+
     def new_file(self, _=None):
-        print("New file")
+        if self.text_lines and self.file_dirty:
+            choice = self.ask_save_file()
+            if choice == wx.ID_CANCEL:
+                return wx.ID_CANCEL
+            if choice == wx.ID_YES:
+                self.save_file()
+        
+        if self.current_file:
+            self.current_file.close()
+            self.current_file = None
+
+        self.clear_lines()
+        self.file_dirty = False
 
     def open_file(self, _=None):
-        print("Open...")
-    
+        if self.text_lines and self.file_dirty:
+            choice = self.ask_save_file()
+            if choice == wx.ID_CANCEL:
+                return
+            if choice == wx.ID_YES:
+                if self.save_file() == wx.ID_CANCEL:
+                    return wx.ID_CANCEL
+
+        file_dialog = wx.FileDialog(self, style=wx.FD_OPEN, wildcard="*.txt")
+        if file_dialog.ShowModal() == wx.ID_CANCEL:
+            return wx.ID_CANCEL
+        
+        path = file_dialog.GetPath()
+        self.load_file_from_path(path)
+        self.file_dirty = False
+
     def save_file(self, _=None):
-        print("Save file")
+        if not self.current_file:
+            if self.save_file_as() == wx.ID_CANCEL:
+                return wx.ID_CANCEL
+        
+        self.save_current_file()
     
     def save_file_as(self, _=None):
-        print("Save file as...")
-    
+        file_dialog = wx.FileDialog(self, style=wx.FD_SAVE, wildcard="*.txt")
+        if file_dialog.ShowModal() == wx.ID_CANCEL:
+            return wx.ID_CANCEL
+        
+        path = file_dialog.GetPath()
+        self.current_file = open(path, "w+", encoding="utf8")
+        self.save_current_file()
+
     def show_exception(self, exception):
         wx.MessageBox(str(exception), caption=type(exception).__name__, parent=self, style=wx.OK | wx.CENTRE | wx.ICON_WARNING)
     
@@ -90,6 +160,7 @@ class TextSwitcherGUI(wx.Frame):
         self.scroll_sizer.Insert(index, line_panel, 0, wx.EXPAND | wx.ALL, 4)
         self.lines_panel.FitInside()
         self.update_line_states()
+        self.file_dirty = True
 
     def remove_line(self, line: "TextLine"):
         line.Destroy()
@@ -98,6 +169,14 @@ class TextSwitcherGUI(wx.Frame):
         if self.active_index >= len(self.text_lines):
             self.active_index = len(self.text_lines) - 1
         self.update_line_states()
+        self.file_dirty = True
+    
+    def clear_lines(self):
+        for text_line in self.text_lines:
+            text_line.Destroy()
+        self.text_lines.clear()
+        self.lines_panel.FitInside()
+        self.active_index = -1
     
     def update_line_states(self):
         for index, text_line in enumerate(self.text_lines):
@@ -174,6 +253,7 @@ class TextLine(wx.Panel):
         elif event.KeyCode == wx.WXK_UP:
             index -= 1
         else:
+            self.text_switcher_gui.file_dirty = True
             event.Skip()
             return
         
