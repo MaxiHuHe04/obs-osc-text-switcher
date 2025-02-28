@@ -4,6 +4,7 @@ import wx.lib.scrolledpanel
 import ctypes
 import obs_text
 import osc_server
+import midi_controller
 import config
 
 SQUARE_BUTTON_SIZE = wx.Size(40, 40) if sys.platform == "linux" else wx.Size(30, 30)
@@ -58,6 +59,7 @@ class TextSwitcherGUI(wx.Frame):
         self.file_dirty = False
 
         self.osc_server = osc_server.OSCServer(self)
+        self.midi_controller = midi_controller.MidiController(self)
 
         self.Bind(wx.EVT_CLOSE, self.on_close_window)
     
@@ -73,6 +75,7 @@ class TextSwitcherGUI(wx.Frame):
             if choice == wx.ID_YES:
                 self.save_file()
         self.osc_server.shutdown()
+        self.midi_controller.shutdown()
         event.Skip()
     
     def load_file_from_path(self, path):
