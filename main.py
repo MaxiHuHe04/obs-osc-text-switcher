@@ -1,3 +1,4 @@
+import sys
 import wx
 import wx.lib.scrolledpanel
 import ctypes
@@ -5,7 +6,7 @@ import obs_text
 import osc_server
 import config
 
-SQUARE_BUTTON_SIZE = wx.Size(24, 24)
+SQUARE_BUTTON_SIZE = wx.Size(40, 40) if sys.platform == "linux" else wx.Size(30, 30)
 
 class TextSwitcherGUI(wx.Frame):
     def __init__(self):
@@ -238,7 +239,7 @@ class TextLine(wx.Panel):
             self.entry.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, "Segoe UI"))
         self.entry.SetValue(text)
         self.entry.Bind(wx.EVT_KEY_DOWN, self.key_down_event)
-        self.go_button = wx.Button(self, label="Go", size=wx.Size(30, SQUARE_BUTTON_SIZE.height))
+        self.go_button = wx.Button(self, label="Go", size=wx.Size(40, SQUARE_BUTTON_SIZE.height))
         self.go_button.Bind(wx.EVT_BUTTON, lambda _: gui.switch_to_text_line(self))
 
         self.sizer = wx.BoxSizer(wx.HORIZONTAL)
