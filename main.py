@@ -234,6 +234,8 @@ class TextLine(wx.Panel):
         self.remove_button = wx.Button(self, label="-", size=SQUARE_BUTTON_SIZE)
         self.remove_button.Bind(wx.EVT_BUTTON, lambda _: gui.remove_line(self))
         self.entry = wx.TextCtrl(self)
+        if sys.platform == "win32":
+            self.entry.SetFont(wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL, False, "Segoe UI"))
         self.entry.SetValue(text)
         self.entry.Bind(wx.EVT_KEY_DOWN, self.key_down_event)
         self.go_button = wx.Button(self, label="Go", size=wx.Size(30, SQUARE_BUTTON_SIZE.height))
