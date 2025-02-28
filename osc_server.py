@@ -25,7 +25,10 @@ class OSCServer(threading.Thread):
         self.server.shutdown()
 
     def next_text(self, address, *args):
-        self.text_switcher_gui.next_line()
+        if len(args) == 1:
+            self.text_switcher_gui.switch_to_line_index(args[0])
+        else:
+            self.text_switcher_gui.next_line()
 
     def previous_text(self, address, *args):
         self.text_switcher_gui.prev_line()
