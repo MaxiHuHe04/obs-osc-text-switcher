@@ -12,11 +12,13 @@ SQUARE_BUTTON_SIZE = wx.Size(40, 40) if sys.platform == "linux" else wx.Size(30,
 class TextSwitcherGUI(wx.Frame):
     def __init__(self):
         super().__init__(None, title="OBS OSC Text Switcher", style=wx.DEFAULT_FRAME_STYLE | wx.FULL_REPAINT_ON_RESIZE)
-        self.SetMinSize((400, 250))
+        self.SetMinSize((400, 290))
         self.SetIcon(wx.Icon("icon.ico"))
 
         self.obs_text_switcher = obs_text.OBSTextSwitcher()
         self.obs_text_switcher.load_settings()
+
+        self.midi_controller = midi_controller.MidiController(self)
 
         self.menu_bar = wx.MenuBar()
         self.file_menu = wx.Menu()
@@ -59,7 +61,6 @@ class TextSwitcherGUI(wx.Frame):
         self.file_dirty = False
 
         self.osc_server = osc_server.OSCServer(self)
-        self.midi_controller = midi_controller.MidiController(self)
 
         self.Bind(wx.EVT_CLOSE, self.on_close_window)
     
@@ -288,6 +289,7 @@ class ControlPanel(wx.Panel):
         super().__init__(parent)
         self.text_switcher_gui = parent
         self.obs_text_switcher = parent.obs_text_switcher
+        self.midi_controller = parent.midi_controller
 
         self.scene1_selector = wx.Choice(self)
         self.scene2_selector = wx.Choice(self)
@@ -296,6 +298,9 @@ class ControlPanel(wx.Panel):
         self.source1_selector = wx.Choice(self)
         self.source2_selector = wx.Choice(self)
         self.selector_divider2 = wx.StaticLine(self)
+
+        self.midi_device_selector = wx.Choice(self)
+        self.divider3 = wx.StaticLine(self)
         
         self.buttons_panel = wx.Panel(self)
         self.prev_button = wx.Button(self.buttons_panel, label="Previous", size=wx.Size(-1, 40))
@@ -309,16 +314,23 @@ class ControlPanel(wx.Panel):
         sizer_args = (0, wx.EXPAND | wx.ALL, 4)
 
         for selector in [self.scene1_selector, self.scene2_selector]:
-            selector.Bind(wx.EVT_CHOICE, self.update_choices)
+            selector.Bind(wx.EVT_CHOICE, self.update_obs_choices)
             self.sizer.Add(selector, *sizer_args)
         
         self.sizer.Add(self.selector_divider1, *sizer_args)
 
         for selector in [self.source1_selector, self.source2_selector]:
-            selector.Bind(wx.EVT_CHOICE, self.update_choices)
+            selector.Bind(wx.EVT_CHOICE, self.update_obs_choices)
             self.sizer.Add(selector, *sizer_args)
         
         self.sizer.Add(self.selector_divider2, *sizer_args)        
+        
+        for selector in [self.midi_device_selector]:
+            selector.Bind(wx.EVT_CHOICE, self.update_midi_choices)
+            self.sizer.Add(selector, *sizer_args)
+        
+        self.sizer.Add(self.divider3, *sizer_args)
+        
         self.sizer.Add(self.buttons_panel, *sizer_args)
 
         self.SetSizer(self.sizer)
@@ -329,7 +341,8 @@ class ControlPanel(wx.Panel):
         
         self.buttons_panel.SetSizer(self.buttons_sizer)
 
-        self.update_choices()
+        self.update_obs_choices()
+        self.update_midi_choices()
     
     """
     Updates the items of a Choice and selects the matching item again if it still exists.
@@ -345,28 +358,28 @@ class ControlPanel(wx.Panel):
         if new_index == -1:
             if select_first_item and len(new_items) >= 1:
                 selector.Select(1)
-                return new_items[0]
+                return 1, new_items[0]
             
             selector.Select(0)
-            return None
+            return -1, None
         
         selector.Select(new_index + 1)  # +1 because of label item
-        return new_items[new_index]
+        return new_index, new_items[new_index]
 
-    def update_choices(self, _=None):
+    def update_obs_choices(self, _=None):
         try:
             scenes = self.obs_text_switcher.get_scene_names()
 
-            scene1 = self.update_selector_items(self.scene1_selector, scenes, "Scene 1", default_item=self.obs_text_switcher.scene1)
-            scene2 = self.update_selector_items(self.scene2_selector, scenes, "Scene 2", default_item=self.obs_text_switcher.scene2)
+            _, scene1 = self.update_selector_items(self.scene1_selector, scenes, "Scene 1", default_item=self.obs_text_switcher.scene1)
+            _, scene2 = self.update_selector_items(self.scene2_selector, scenes, "Scene 2", default_item=self.obs_text_switcher.scene2)
             
             scene1_sources = [] if scene1 is None else self.obs_text_switcher.get_text_sources(scene1)
             scene2_sources = [] if scene2 is None else self.obs_text_switcher.get_text_sources(scene2)
 
-            source1 = self.update_selector_items(self.source1_selector, scene1_sources, "Source 1",
+            _, source1 = self.update_selector_items(self.source1_selector, scene1_sources, "Source 1",
                                                  default_item=self.obs_text_switcher.source1,
                                                  select_first_item=True)
-            source2 = self.update_selector_items(self.source2_selector, scene2_sources, "Source 2",
+            _, source2 = self.update_selector_items(self.source2_selector, scene2_sources, "Source 2",
                                                  default_item=self.obs_text_switcher.source2,
                                                  select_first_item=True)
 
@@ -381,6 +394,17 @@ class ControlPanel(wx.Panel):
                     self.buttons_panel.Disable()
                     return
             self.buttons_panel.Enable()
+        except Exception as e:
+            self.text_switcher_gui.show_exception(e)
+        
+    def update_midi_choices(self, _=None):
+        try:
+            devices = self.midi_controller.get_devices()
+            index, selected_device = self.update_selector_items(self.midi_device_selector, devices, "Midi device")
+            if selected_device is None:
+                self.midi_controller.close_port()
+            else:
+                self.midi_controller.open_port(index)
         except Exception as e:
             self.text_switcher_gui.show_exception(e)
 
