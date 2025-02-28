@@ -81,7 +81,7 @@ class OBSTextSwitcher:
 
     def get_text_sources(self, scene_name):
         scene_item_list = self.client.call(obsrequests.GetSceneItemList(sceneName=scene_name)).getSceneItems()
-        return list(reversed([item["sourceName"] for item in scene_item_list if item["inputKind"] == "text_gdiplus_v2"]))
+        return list(reversed([item["sourceName"] for item in scene_item_list if item["inputKind"] in ["text_gdiplus_v2", "text_gdiplus_v3"]]))
 
     def get_program_scene(self):
         return self.client.call(obsrequests.GetCurrentProgramScene()).getCurrentProgramSceneName()
